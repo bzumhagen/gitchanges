@@ -5,6 +5,7 @@ import (
 	"github.com/magiconair/properties/assert"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"testing"
+	"time"
 )
 
 func TestGetRepository(t *testing.T) {
@@ -49,7 +50,11 @@ func TestGetChanges(t *testing.T) {
 	version000 := semver.MustParse("0.0.0")
 	version012 := semver.MustParse("0.1.2")
 	version011 := semver.MustParse("0.1.1")
-
+	testAuthor := object.Signature{
+		Name:  "Testy Testerson",
+		Email: "test@test.com",
+		When:  time.Now(),
+	}
 	tests := []struct {
 		start           semver.Version
 		commitItr       object.CommitIter
@@ -66,21 +71,25 @@ func TestGetChanges(t *testing.T) {
 							"version: 0.1.2\n" +
 							"tag: Added\n" +
 							"reference: XYZ-123",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with version, tag, but no reference\n" +
 							"\n" +
 							"version: 0.1.1\n" +
 							"tag: Changed",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with version, but no tag or reference\n" +
 							"\n" +
 							"version: 0.1.0",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with no version, tag or reference\n" +
 							"\n",
+						Author: testAuthor,
 					},
 				},
 				currentIndex: 0,
@@ -91,12 +100,14 @@ func TestGetChanges(t *testing.T) {
 					Version:     version012,
 					Reference:   "XYZ-123",
 					Tag:         "Added",
+					When:        testAuthor.When,
 				},
 				{
 					Description: "Commit with version, tag, but no reference",
 					Version:     version011,
 					Reference:   "",
 					Tag:         "Changed",
+					When:        testAuthor.When,
 				},
 			},
 		},
@@ -110,21 +121,25 @@ func TestGetChanges(t *testing.T) {
 							"version: 0.1.2\n" +
 							"tag: Added\n" +
 							"reference: XYZ-123",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with version, tag, but no reference\n" +
 							"\n" +
 							"version: 0.1.1\n" +
 							"tag: Changed",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with version, but no tag or reference\n" +
 							"\n" +
 							"version: 0.1.0",
+						Author: testAuthor,
 					},
 					{
 						Message: "Commit with no version, tag or reference\n" +
 							"\n",
+						Author: testAuthor,
 					},
 				},
 				currentIndex: 0,
@@ -135,6 +150,7 @@ func TestGetChanges(t *testing.T) {
 					Version:     version012,
 					Reference:   "XYZ-123",
 					Tag:         "Added",
+					When:        testAuthor.When,
 				},
 			},
 		},

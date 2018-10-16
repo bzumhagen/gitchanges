@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/blang/semver"
 	"github.com/bzumhagen/gitchanges/version"
+	"github.com/hoisie/mustache"
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-billy.v4/osfs"
 	"gopkg.in/src-d/go-git.v4"
@@ -15,15 +16,47 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
+
+const ungroupedTemplate = `
+# {{name}} Change Log
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepachangelog.com/)
+and this project adheres to [Semantic Versioning](http://semver.org/).
+
+{{#changes}}
+## [{{Version}}] - {{Date}}
+### {{Tag}}
+- {{#showReference}}{{FmtReference}}{{/showReference}}{{Description}}
+{{/changes}}
+`
 
 type Change struct {
 	Description string
 	Reference   string
 	Version     semver.Version
 	Tag         string
+	When		time.Time
 }
+
+func (c Change) Date() string {
+	year, month, day := c.When.Date()
+	return strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day)
+}
+
+func (c Change) FmtReference() string {
+	if len(c.Reference) > 0 {
+		return c.Reference
+	} else {
+		return ""
+	}
+}
+
+
 
 func main() {
 	args := os.Args[1:]
@@ -71,7 +104,13 @@ func buildChangelog(path string) error {
 	start := semver.MustParse("0.0.0")
 	changes := getChanges(start, itr)
 
-	fmt.Printf("%v", changes)
+	data := mustache.Render(
+		ungroupedTemplate,
+		map[string][]Change{"changes": changes},
+		map[string]string{"name": "Default"},
+		map[string]bool{"showReference": false},
+	)
+	fmt.Printf("%v", data)
 	return nil
 }
 
@@ -112,6 +151,7 @@ func getChanges(start semver.Version, iter object.CommitIter) []Change {
 					Reference:   reference,
 					Version:     parsedVersion,
 					Tag:         tag,
+					When:		 c.Author.When,
 				}
 				changes = append(changes, change)
 			}

@@ -4,6 +4,7 @@ require (
 	github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/hoisie/mustache v0.0.0-20160804235033-6375acf62c69
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20180830205328-81db2a75821e // indirect
 	github.com/magiconair/properties v1.8.0
