@@ -13,6 +13,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -110,7 +111,8 @@ func buildChangelog(path string) error {
 		map[string]string{"name": "Default"},
 		map[string]bool{"showReference": false},
 	)
-	fmt.Printf("%v", data)
+
+	ioutil.WriteFile("changelog.md", []byte(data), 444)
 	return nil
 }
 
