@@ -46,7 +46,122 @@ func (m mockCommitIter) Close() {
 	m.currentIndex = 0
 }
 
-func TestGetChanges(t *testing.T) {
+func TestGroupChanges(t *testing.T) {
+	version012 := semver.MustParse("0.1.2")
+	version011 := semver.MustParse("0.1.1")
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	lastWeek := now.AddDate(0, 0, -7)
+	tests := []struct {
+		changes         []Change
+		expectedResults []ChangeGroup
+	}{
+		{
+			changes: []Change{
+				{
+					Description: "Commit with version, tag, and reference",
+					Version:     version012,
+					Reference:   "XYZ-123",
+					Tag:         "Added",
+					When:        now,
+				},
+				{
+					Description: "Another commit with version, tag, and reference",
+					Version:     version012,
+					Reference:   "XYZ-123",
+					Tag:         "Added",
+					When:        yesterday,
+				},
+				{
+					Description: "One more commit with version, tag, and reference",
+					Version:     version012,
+					Reference:   "XYZ-123",
+					Tag:         "Removed",
+					When:        lastWeek,
+				},
+				{
+					Description: "Commit with version, tag, but no reference",
+					Version:     version011,
+					Reference:   "",
+					Tag:         "Changed",
+					When:        lastWeek,
+				},
+			},
+			expectedResults: []ChangeGroup{
+				{
+					Version: version012,
+					TaggedChanges: []TaggedChanges{
+						{
+							Tag: "Added",
+							Changes: []Change{
+								{
+									Description: "Commit with version, tag, and reference",
+									Version:     version012,
+									Reference:   "XYZ-123",
+									Tag:         "Added",
+									When:        now,
+								},
+								{
+									Description: "Another commit with version, tag, and reference",
+									Version:     version012,
+									Reference:   "XYZ-123",
+									Tag:         "Added",
+									When:        yesterday,
+								},
+							},
+						},
+						{
+							Tag: "Removed",
+							Changes: []Change{
+								{
+									Description: "One more commit with version, tag, and reference",
+									Version:     version012,
+									Reference:   "XYZ-123",
+									Tag:         "Removed",
+									When:        lastWeek,
+								},
+							},
+						},
+					},
+					When: now,
+				},
+				{
+					Version: version011,
+					TaggedChanges: []TaggedChanges{
+						{
+							Tag: "Changed",
+							Changes: []Change{
+								{
+									Description: "Commit with version, tag, but no reference",
+									Version:     version011,
+									Reference:   "",
+									Tag:         "Changed",
+									When:        lastWeek,
+								},
+							},
+						},
+					},
+					When: lastWeek,
+				},
+			},
+		},
+		{
+			changes:         []Change{},
+			expectedResults: []ChangeGroup{},
+		},
+	}
+
+	for _, test := range tests {
+		results := groupChanges(&test.changes)
+		if len(test.expectedResults) > 0 {
+			assert.Equal(t, test.expectedResults, results)
+		} else {
+			assert.Equal(t, 0, len(results))
+		}
+	}
+}
+
+func TestBuildChanges(t *testing.T) {
 	version000 := semver.MustParse("0.0.0")
 	version012 := semver.MustParse("0.1.2")
 	version011 := semver.MustParse("0.1.1")
@@ -59,7 +174,6 @@ func TestGetChanges(t *testing.T) {
 		start           semver.Version
 		commitItr       object.CommitIter
 		expectedResults []Change
-		err             error
 	}{
 		{
 			start: version000,
@@ -178,7 +292,7 @@ func TestGetChanges(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		results := getChanges(test.start, test.commitItr)
+		results := buildChanges(test.start, test.commitItr)
 		if len(test.expectedResults) > 0 {
 			assert.Equal(t, test.expectedResults, results)
 		} else {
