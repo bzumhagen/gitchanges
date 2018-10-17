@@ -80,12 +80,7 @@ func main() {
 	//startVersionPtr := flag.String("start", "", "Start version. If not specified, will use all versions")
 
 	flag.Parse()
-	viper.SetConfigFile(*configPtr)
-	err := viper.ReadInConfig()
-
-	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
+	readConfig(configPtr)
 
 	if len(args) > 0 {
 		arg := args[0]
@@ -105,6 +100,15 @@ func main() {
 	}
 }
 
+func readConfig(path *string) {
+	viper.SetConfigFile(*path)
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+	viper.SetDefault("sct.name", "Project")
+}
+
 func buildChangelog(path string) error {
 	r, err := getRepository(path)
 	if err != nil {
@@ -119,11 +123,12 @@ func buildChangelog(path string) error {
 	start := semver.MustParse("0.0.0")
 	changes := buildChanges(start, itr)
 	groups := groupChanges(&changes)
+	viper.GetString("sct.name")
 
 	data := mustache.Render(
 		ungroupedTemplate,
 		map[string][]ChangeGroup{"changeGroups": groups},
-		map[string]string{"name": "Default"},
+		map[string]string{"name": viper.GetString("sct.name")},
 		map[string]bool{"showReference": false},
 	)
 
