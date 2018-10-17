@@ -74,26 +74,27 @@ func (c Change) FmtReference() string {
 }
 
 func main() {
-	args := os.Args[1:]
-	repoPtr := flag.String("repo", ".", "Path to git repository")
-	configPtr := flag.String("config", "changelog.yaml", "Path to configuration file")
-	//startVersionPtr := flag.String("start", "", "Start version. If not specified, will use all versions")
-
+	repoPath := flag.String("repo", ".", "Path to git repository")
+	configPath := flag.String("config", "changelog.yaml", "Path to configuration file")
+	startVersion := flag.String("start", "0.0.0", "Start version. If not specified, will use all versions")
 	flag.Parse()
-	readConfig(configPtr)
+
+	args := os.Args[1:]
+	parsedVersion := semver.MustParse(*startVersion)
+	readConfig(configPath)
 
 	if len(args) > 0 {
 		arg := args[0]
 		if arg == "version" {
 			fmt.Println(version.VERSION)
 		} else {
-			err := buildChangelog(*repoPtr)
+			err := buildChangelog(*repoPath, parsedVersion)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
 	} else {
-		err := buildChangelog(*repoPtr)
+		err := buildChangelog(*repoPath, parsedVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -109,7 +110,7 @@ func readConfig(path *string) {
 	viper.SetDefault("sct.name", "Project")
 }
 
-func buildChangelog(path string) error {
+func buildChangelog(path string, start semver.Version) error {
 	r, err := getRepository(path)
 	if err != nil {
 		return err
@@ -120,7 +121,6 @@ func buildChangelog(path string) error {
 		return err
 	}
 
-	start := semver.MustParse("0.0.0")
 	changes := buildChanges(start, itr)
 	groups := groupChanges(&changes)
 	viper.GetString("sct.name")
