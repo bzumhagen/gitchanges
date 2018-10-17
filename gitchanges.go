@@ -17,6 +17,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -29,11 +30,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-{{#changes}}
+{{#changeGroups}}
 ## [{{Version}}] - {{Date}}
+{{#TaggedChanges}}
 ### {{Tag}}
+{{#Changes}}
 - {{#showReference}}{{FmtReference}}{{/showReference}}{{Description}}
-{{/changes}}
+{{/Changes}}
+{{/TaggedChanges}}
+***
+{{/changeGroups}}
 `
 
 type Change struct {
@@ -41,10 +47,20 @@ type Change struct {
 	Reference   string
 	Version     semver.Version
 	Tag         string
-	When		time.Time
+	When        time.Time
 }
 
-func (c Change) Date() string {
+type TaggedChanges struct {
+	Tag string
+	Changes []Change
+}
+type ChangeGroup struct {
+	Version semver.Version
+	TaggedChanges []TaggedChanges
+	When        time.Time
+}
+
+func (c ChangeGroup) Date() string {
 	year, month, day := c.When.Date()
 	return strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day)
 }
@@ -56,8 +72,6 @@ func (c Change) FmtReference() string {
 		return ""
 	}
 }
-
-
 
 func main() {
 	args := os.Args[1:]
@@ -103,11 +117,12 @@ func buildChangelog(path string) error {
 	}
 
 	start := semver.MustParse("0.0.0")
-	changes := getChanges(start, itr)
+	changes := buildChanges(start, itr)
+	groups := groupChanges(&changes)
 
 	data := mustache.Render(
 		ungroupedTemplate,
-		map[string][]Change{"changes": changes},
+		map[string][]ChangeGroup{"changeGroups": groups},
 		map[string]string{"name": "Default"},
 		map[string]bool{"showReference": false},
 	)
@@ -116,7 +131,45 @@ func buildChangelog(path string) error {
 	return nil
 }
 
-func getChanges(start semver.Version, iter object.CommitIter) []Change {
+func groupChanges(changes *[]Change) []ChangeGroup {
+	var groups []ChangeGroup
+	versionToChanges := make(map[string][]Change)
+
+	for _, change := range *changes {
+		v := change.Version.String()
+		versionToChanges[v] = append(versionToChanges[v], change)
+	}
+	for v, changes := range versionToChanges {
+		var taggedChanges []TaggedChanges
+		tagToChanges := make(map[string][]Change)
+
+		for _, c := range changes {
+			tagToChanges[c.Tag] = append(tagToChanges[c.Tag], c)
+		}
+		for t, changes := range tagToChanges {
+			tc := TaggedChanges{
+				Tag: t,
+				Changes: changes,
+			}
+			taggedChanges = append(taggedChanges, tc)
+		}
+		sort.Slice(taggedChanges, func(i, j int) bool {
+			return taggedChanges[i].Tag < taggedChanges[j].Tag
+		})
+		cg := ChangeGroup{
+			Version: semver.MustParse(v),
+			TaggedChanges: taggedChanges,
+			When: changes[0].When,
+		}
+		groups = append(groups, cg)
+	}
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Version.GT(groups[j].Version)
+	})
+	return groups
+}
+
+func buildChanges(start semver.Version, iter object.CommitIter) []Change {
 	var changes []Change
 	vr := regexp.MustCompile("[\\s\\S]*\nversion: (.+)[\\s\\S]*")
 	tr := regexp.MustCompile("[\\s\\S]*\ntag: (.+)[\\s\\S]*")
@@ -153,7 +206,7 @@ func getChanges(start semver.Version, iter object.CommitIter) []Change {
 					Reference:   reference,
 					Version:     parsedVersion,
 					Tag:         tag,
-					When:		 c.Author.When,
+					When:        c.Author.When,
 				}
 				changes = append(changes, change)
 			}
