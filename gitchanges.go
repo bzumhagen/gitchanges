@@ -24,7 +24,7 @@ import (
 )
 
 const ungroupedTemplate = `
-# {{name}} Change Log
+# {{name}} Changelog
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
@@ -39,8 +39,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 {{/Changes}}
 {{/TaggedChanges}}
 ***
-{{/changeGroups}}
-`
+{{/changeGroups}}`
+const nameKey = "sct.name"
+const showReferenceKey = "sct.showReference"
 
 type Change struct {
 	Description string
@@ -67,7 +68,7 @@ func (c ChangeGroup) Date() string {
 
 func (c Change) FmtReference() string {
 	if len(c.Reference) > 0 {
-		return c.Reference
+		return c.Reference + " "
 	} else {
 		return ""
 	}
@@ -125,15 +126,19 @@ func buildChangelog(path string, start semver.Version) error {
 	groups := groupChanges(&changes)
 	viper.GetString("sct.name")
 
-	data := mustache.Render(
-		ungroupedTemplate,
-		map[string][]ChangeGroup{"changeGroups": groups},
-		map[string]string{"name": viper.GetString("sct.name")},
-		map[string]bool{"showReference": false},
-	)
+	renderedTemplate := render(ungroupedTemplate, &groups)
 
-	ioutil.WriteFile("changelog.md", []byte(data), 444)
+	ioutil.WriteFile("changelog.md", []byte(renderedTemplate), 444)
 	return nil
+}
+
+func render(template string, groups *[]ChangeGroup) string {
+	return mustache.Render(
+		template,
+		map[string][]ChangeGroup{"changeGroups": *groups},
+		map[string]string{"name": viper.GetString("sct.name")},
+		map[string]bool{"showReference": viper.GetBool("sct.showReference")},
+	)
 }
 
 func groupChanges(changes *[]Change) []ChangeGroup {
