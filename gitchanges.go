@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 {{/changeGroups}}`
 const nameKey = "sct.name"
 const showReferenceKey = "sct.showReference"
+const templateKey = "sct.template"
 
 type Change struct {
 	Description string
@@ -108,7 +109,7 @@ func readConfig(path *string) {
 	if err != nil {
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
-	viper.SetDefault("sct.name", "Project")
+	viper.SetDefault(nameKey, "Project")
 }
 
 func buildChangelog(path string, start semver.Version) error {
@@ -124,20 +125,36 @@ func buildChangelog(path string, start semver.Version) error {
 
 	changes := buildChanges(start, itr)
 	groups := groupChanges(&changes)
-	viper.GetString("sct.name")
+	template, err := loadTemplate()
+	if err != nil {
+		return err
+	}
 
-	renderedTemplate := render(ungroupedTemplate, &groups)
+	renderedTemplate := render(template, &groups)
 
 	ioutil.WriteFile("changelog.md", []byte(renderedTemplate), 444)
 	return nil
+}
+
+func loadTemplate() (string, error) {
+	template := viper.GetString(templateKey)
+	if template == "" {
+		return ungroupedTemplate, nil
+	} else {
+		bytes, err := ioutil.ReadFile(template)
+		if err != nil {
+			return "", err
+		}
+		return string(bytes), err
+	}
 }
 
 func render(template string, groups *[]ChangeGroup) string {
 	return mustache.Render(
 		template,
 		map[string][]ChangeGroup{"changeGroups": *groups},
-		map[string]string{"name": viper.GetString("sct.name")},
-		map[string]bool{"showReference": viper.GetBool("sct.showReference")},
+		map[string]string{"name": viper.GetString(nameKey)},
+		map[string]bool{"showReference": viper.GetBool(showReferenceKey)},
 	)
 }
 
