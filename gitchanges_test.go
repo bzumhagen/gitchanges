@@ -163,7 +163,7 @@ func TestRender(t *testing.T) {
 	}{
 		{
 			template: ungroupedTemplate,
-			groups: testGroups,
+			groups:   testGroups,
 			initConfig: func() error {
 				viper.Set(nameKey, "Test")
 				viper.Set(showReferenceKey, false)
@@ -196,7 +196,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 		},
 		{
 			template: ungroupedTemplate,
-			groups: testGroups,
+			groups:   testGroups,
 			initConfig: func() error {
 				viper.Set(nameKey, "Test")
 				viper.Set(showReferenceKey, true)
