@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/blang/semver"
 	"github.com/magiconair/properties/assert"
+	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"testing"
 	"time"
@@ -44,6 +46,151 @@ func (m mockCommitIter) ForEach(fn func(*object.Commit) error) error {
 
 func (m mockCommitIter) Close() {
 	m.currentIndex = 0
+}
+
+
+func TestRender(t *testing.T) {
+	version012 := semver.MustParse("0.1.2")
+	version011 := semver.MustParse("0.1.1")
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	lastWeek := now.AddDate(0, 0, -7)
+	testGroups := []ChangeGroup{
+		{
+			Version: version012,
+			TaggedChanges: []TaggedChanges{
+				{
+					Tag: "Added",
+					Changes: []Change{
+						{
+							Description: "Commit with version, tag, and reference",
+							Version:     version012,
+							Reference:   "XYZ-123",
+							Tag:         "Added",
+							When:        now,
+						},
+						{
+							Description: "Another commit with version, tag, and reference",
+							Version:     version012,
+							Reference:   "XYZ-123",
+							Tag:         "Added",
+							When:        yesterday,
+						},
+					},
+				},
+				{
+					Tag: "Removed",
+					Changes: []Change{
+						{
+							Description: "One more commit with version, tag, and reference",
+							Version:     version012,
+							Reference:   "XYZ-123",
+							Tag:         "Removed",
+							When:        lastWeek,
+						},
+					},
+				},
+			},
+			When: now,
+		},
+		{
+			Version: version011,
+			TaggedChanges: []TaggedChanges{
+				{
+					Tag: "Changed",
+					Changes: []Change{
+						{
+							Description: "Commit with version, tag, but no reference",
+							Version:     version011,
+							Reference:   "",
+							Tag:         "Changed",
+							When:        lastWeek,
+						},
+					},
+				},
+			},
+			When: lastWeek,
+		},
+	}
+	tests := []struct {
+		template       string
+		groups         []ChangeGroup
+		initConfig     func() error
+		expectedResult string
+	}{
+		{
+			template: ungroupedTemplate,
+			groups: testGroups,
+			initConfig: func() error {
+				viper.Set(nameKey, "Test")
+				viper.Set(showReferenceKey, false)
+				return nil
+			},
+			expectedResult: fmt.Sprintf(`
+# Test Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepachangelog.com/)
+and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [0.1.2] - %s
+### Added
+- Commit with version, tag, and reference
+- Another commit with version, tag, and reference
+
+### Removed
+- One more commit with version, tag, and reference
+
+
+***
+## [0.1.1] - %s
+### Changed
+- Commit with version, tag, but no reference
+
+
+***
+`, testGroups[0].Date(), testGroups[1].Date()),
+		},
+		{
+			template: ungroupedTemplate,
+			groups: testGroups,
+			initConfig: func() error {
+				viper.Set(nameKey, "Test")
+				viper.Set(showReferenceKey, true)
+				return nil
+			},
+			expectedResult: fmt.Sprintf(`
+# Test Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepachangelog.com/)
+and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [0.1.2] - %s
+### Added
+- XYZ-123 Commit with version, tag, and reference
+- XYZ-123 Another commit with version, tag, and reference
+
+### Removed
+- XYZ-123 One more commit with version, tag, and reference
+
+
+***
+## [0.1.1] - %s
+### Changed
+- Commit with version, tag, but no reference
+
+
+***
+`, testGroups[0].Date(), testGroups[1].Date()),
+		},
+	}
+
+	for _, test := range tests {
+		_ = test.initConfig()
+		result := render(test.template, &test.groups)
+		assert.Equal(t, result, test.expectedResult)
+	}
 }
 
 func TestGroupChanges(t *testing.T) {
