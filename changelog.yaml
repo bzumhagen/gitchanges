@@ -1,3 +1,4 @@
 sct:
   name: gitchanges
   showReference: false
+  #template: custom-template.mustache

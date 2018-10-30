@@ -6,6 +6,7 @@ import (
 	"github.com/magiconair/properties/assert"
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"io/ioutil"
 	"testing"
 	"time"
 )
@@ -48,6 +49,48 @@ func (m mockCommitIter) Close() {
 	m.currentIndex = 0
 }
 
+func TestLoadTemplate(t *testing.T) {
+	tests := []struct {
+		template       string
+		initConfig     func(string) error
+		expectedResult string
+	}{
+		{
+			template: "My template",
+			initConfig: func(path string) error {
+				viper.Set(templateKey, path)
+				return nil
+			},
+			expectedResult: "My template",
+		},
+		{
+			template: "",
+			initConfig: func(path string) error {
+				viper.Set(templateKey, path)
+				return nil
+			},
+			expectedResult: ungroupedTemplate,
+		},
+	}
+
+	for _, test := range tests {
+		if test.template != "" {
+			f, _ := ioutil.TempFile("", "tmp")
+			f.Write([]byte(test.template))
+			_ = test.initConfig(f.Name())
+
+			result, err := loadTemplate()
+			assert.Equal(t, err, nil)
+			assert.Equal(t, result, test.expectedResult)
+			f.Close()
+		} else {
+			_ = test.initConfig("")
+			result, err := loadTemplate()
+			assert.Equal(t, err, nil)
+			assert.Equal(t, result, test.expectedResult)
+		}
+	}
+}
 
 func TestRender(t *testing.T) {
 	version012 := semver.MustParse("0.1.2")
