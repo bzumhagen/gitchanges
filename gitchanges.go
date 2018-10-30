@@ -53,13 +53,13 @@ type Change struct {
 }
 
 type TaggedChanges struct {
-	Tag string
+	Tag     string
 	Changes []Change
 }
 type ChangeGroup struct {
-	Version semver.Version
+	Version       semver.Version
 	TaggedChanges []TaggedChanges
-	When        time.Time
+	When          time.Time
 }
 
 func (c ChangeGroup) Date() string {
@@ -175,7 +175,7 @@ func groupChanges(changes *[]Change) []ChangeGroup {
 		}
 		for t, changes := range tagToChanges {
 			tc := TaggedChanges{
-				Tag: t,
+				Tag:     t,
 				Changes: changes,
 			}
 			taggedChanges = append(taggedChanges, tc)
@@ -184,9 +184,9 @@ func groupChanges(changes *[]Change) []ChangeGroup {
 			return taggedChanges[i].Tag < taggedChanges[j].Tag
 		})
 		cg := ChangeGroup{
-			Version: semver.MustParse(v),
+			Version:       semver.MustParse(v),
 			TaggedChanges: taggedChanges,
-			When: changes[0].When,
+			When:          changes[0].When,
 		}
 		groups = append(groups, cg)
 	}
