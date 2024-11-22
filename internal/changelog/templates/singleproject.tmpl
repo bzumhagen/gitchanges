@@ -1,0 +1,15 @@
+# {{ .ProjectName }} Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+{{ if .FilterDeclaration }}{{ .FilterDeclaration }}{{ end }}
+{{ $changeGroups := .ChangeGroups }}
+{{ range $changeGroup := $changeGroups }}
+
+## [{{ $changeGroup.Tag }}]{{if $changeGroup.Date}} - {{ $changeGroup.Date }}{{end}}
+{{ $labeledChanges := $changeGroup.LabeledChanges }}{{ range $label, $changes  := $labeledChanges }}{{if $label}}### {{ $label }}{{end}}{{ range $change  := $changes }}
+- {{ $change.Description }}
+{{ end }}{{ end }}{{ end }}
