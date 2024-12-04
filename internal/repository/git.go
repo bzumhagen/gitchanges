@@ -56,7 +56,22 @@ func (r *GitRepository) TraverseHistory(f func(c changelog.Commit) error) error 
 	}
 
 	err = tIter.ForEach(func(r *plumbing.Reference) error {
-		tagToRef[r.Hash().String()] = r.Name().Short()
+		var tagName string
+		var commitHash string
+		obj, iterErr := repo.TagObject(r.Hash())
+		switch iterErr {
+		case nil:
+			// Tag object present (i.e. is annotated tag)
+			tagName = r.Name().Short()
+			commitHash = obj.Target.String()
+		case plumbing.ErrObjectNotFound:
+			// Not a tag object (i.e. is lightweight tag)
+			tagName = r.Name().Short()
+			commitHash = r.Hash().String()
+		default:
+			return iterErr
+		}
+		tagToRef[commitHash] = tagName
 		return nil
 	})
 	if err != nil {
@@ -70,7 +85,7 @@ func (r *GitRepository) TraverseHistory(f func(c changelog.Commit) error) error 
 	err = cIter.ForEach(func(c *object.Commit) error {
 		cc := changelog.Commit{
 			Message: c.Message,
-			Date:    c.Author.When.Format(time.DateOnly),
+			Date:    c.Committer.When.Format(time.DateOnly),
 		}
 		tag, found := tagToRef[c.Hash.String()]
 		if found {
